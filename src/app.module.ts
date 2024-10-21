@@ -3,26 +3,26 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AlertModule } from './alert/alert.module';
 import { PriceModule } from './price/price.module';
-import { SwaggerModule } from '@nestjs/swagger';
 import { ConfigModule } from '@nestjs/config';
+import { SwapModule } from './swap/swap.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'mysql',
-      host: 'localhost',
-      port: 3306,
-      username: 'root',
-      password: '',
-      database: 'blockchain_tracker',
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT),
+      username: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_DATABASE,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
     }),
     AlertModule,
     PriceModule,
-    SwaggerModule,
+    SwapModule,
   ],
 })
 export class AppModule {}

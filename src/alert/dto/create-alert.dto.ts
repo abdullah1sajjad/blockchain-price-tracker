@@ -1,5 +1,4 @@
 export class CreateAlertDto {
-  chain: string;
-  targetPrice: number;
-  email: string;
+  readonly newPrice: number;
+  readonly percentageChange: number;
 }

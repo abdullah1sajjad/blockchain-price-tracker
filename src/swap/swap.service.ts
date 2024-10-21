@@ -1,27 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import axios from 'axios';
 
 @Injectable()
 export class SwapService {
-  private feePercentage = 0.03;
+  private btcRatePerEth = 0.03; // Replace with real-time rate from API
+  private ethToUsdRate = 1500; // Replace with real-time rate from API
 
-  async calculateSwapRate(ethAmount: number) {
-    // Get the current ETH to BTC exchange rate (use a real API here)
-    const response = await axios.get(
-      'https://api.somecryptoapi.com/eth-to-btc',
-    );
-    const ethToBtcRate = response.data.rate;
+  calculateBtc(ethAmount: number): {
+    btc: number;
+    feeEth: number;
+    feeUsd: number;
+  } {
+    const btc = ethAmount * this.btcRatePerEth;
+    const feeEth = ethAmount * 0.03; // 0.03% fee
+    const feeUsd = feeEth * this.ethToUsdRate;
 
-    const btcAmount = ethAmount * ethToBtcRate;
-    const feeInEth = ethAmount * this.feePercentage;
-    const feeInDollars = feeInEth * ethToBtcRate; // Convert fee to USD using the ETH-BTC rate
-
-    return {
-      btcAmount,
-      fee: {
-        eth: feeInEth,
-        usd: feeInDollars,
-      },
-    };
+    return { btc, feeEth, feeUsd };
   }
 }

@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Price } from '../price/price.entity';
 import { AlertService } from './alert.service';
+import { Price } from 'src/price/price.entity';
+import { PriceSchedulerService } from './price-scheduler.service';
+import { EmailService } from 'src/email/email.service';
 import { AlertController } from './alert.controller';
-import { EmailService } from './email.service';
+import { PriceAlert } from './price-alert.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Price])],
-  providers: [AlertService, EmailService],
+  imports: [TypeOrmModule.forFeature([Price, PriceAlert])],
+  providers: [AlertService, PriceSchedulerService, EmailService],
   controllers: [AlertController],
+  exports: [AlertService],
 })
 export class AlertModule {}

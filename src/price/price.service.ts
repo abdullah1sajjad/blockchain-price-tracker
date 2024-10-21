@@ -1,10 +1,8 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { Price } from './price.entity';
 import Moralis from 'moralis';
-import { ConfigService } from '@nestjs/config';
-import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class PriceService {
@@ -14,28 +12,96 @@ export class PriceService {
   constructor(
     @InjectRepository(Price)
     private readonly priceRepository: Repository<Price>,
-    private readonly configService: ConfigService,
   ) {
-    // this.configService.get<string>('MORALIS_API_KEY')
     Moralis.start({
-      apiKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6ImMyYzViNmUzLTUyZjAtNDdkOC04ZmEyLTJiYzQ0NmVkNWE4NiIsIm9yZ0lkIjoiNDEyMjkwIiwidXNlcklkIjoiNDIzNjkzIiwidHlwZUlkIjoiOTUwYzVmZWEtY2RlYy00NTk0LWIyOTktMjg2YWNlZjIwZTRjIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3MjkyNTgzMzIsImV4cCI6NDg4NTAxODMzMn0.OiyLEOjhmSmmA_QIVY-ycxqTYThmPClCAkc76PB5hZQ',
+      apiKey: process.env.MORALIS_API_KEY,
     });
   }
 
-  async getLast24HoursPrices(chain: string): Promise<Price[]> {
+  async getHourlyAverages(): Promise<
+    Array<{ hour: string; ethereum: number; polygon: number }>
+  > {
     const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    return await this.priceRepository.find({
+    const ethereumPrices = await this.priceRepository.find({
       where: {
-        chain,
-        timestamp: MoreThan(oneDayAgo),
+        chain: 'ethereum',
+        timestamp: Between(startTime, now),
       },
-      order: {
-        timestamp: 'ASC',
-      },
+      order: { timestamp: 'ASC' },
     });
+    const polygonPrices = await this.priceRepository.find({
+      where: {
+        chain: 'polygon',
+        timestamp: Between(startTime, now),
+      },
+      order: { timestamp: 'ASC' },
+    });
+
+    return this.calculateHourlyAverages(ethereumPrices, polygonPrices);
+  }
+
+  private calculateHourlyAverages(
+    ethereumPrices: Price[],
+    polygonPrices: Price[],
+  ): Array<{ hour: string; ethereum: number; polygon: number }> {
+    const hourlyData = [];
+    const now = new Date();
+
+    // Loop through the last 24 hours starting from the current hour
+    for (let i = 0; i < 24; i++) {
+      // Calculate the start and end times of the hour, ensuring UTC is used
+      const end = new Date(
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate(),
+          now.getUTCHours() - i,
+          0,
+          0,
+          0,
+        ),
+      );
+      const start = new Date(end);
+      start.setUTCHours(end.getUTCHours() - 1); // Previous hour start
+
+      // Filter prices within the hour range
+      const ethPricesInHour = ethereumPrices.filter(
+        (price) =>
+          new Date(price.timestamp).getTime() >= start.getTime() &&
+          new Date(price.timestamp).getTime() < end.getTime(),
+      );
+      const polyPricesInHour = polygonPrices.filter(
+        (price) =>
+          new Date(price.timestamp).getTime() >= start.getTime() &&
+          new Date(price.timestamp).getTime() < end.getTime(),
+      );
+
+      // Calculate average prices for each hour
+      const ethAverage = this.calculateAverage(ethPricesInHour);
+      const polyAverage = this.calculateAverage(polyPricesInHour);
+
+      // Formatting the hour as "HH:00" in local UTC
+      const adjustedHour = (start.getUTCHours() + 5) % 24;
+      const hourString = adjustedHour.toString().padStart(2, '0') + ':00';
+
+      hourlyData.push({
+        hour: hourString,
+        ethereum: Number(ethAverage.toFixed(8)),
+        polygon: Number(polyAverage.toFixed(8)),
+      });
+    }
+
+    // Return the data in descending order (from current hour to last 24 hours)
+    return hourlyData;
+  }
+
+  private calculateAverage(prices: Price[]): number {
+    if (prices.length === 0) return 0;
+
+    const total = prices.reduce((acc, price) => acc + Number(price.price), 0);
+    return total / prices.length;
   }
 
   async getPrice(chain: string): Promise<number> {
@@ -93,11 +159,5 @@ export class PriceService {
     });
 
     await this.priceRepository.save(newPrice);
-  }
-
-  @Cron('*/5 * * * *')
-  async handleCron() {
-    await this.getPrice('ethereum');
-    await this.getPrice('polygon');
   }
 }

@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { SwapService } from './swap.service';
 import { SwapController } from './swap.controller';
+import { SwapService } from './swap.service';
 
 @Module({
-  providers: [SwapService],
   controllers: [SwapController],
+  providers: [SwapService],
 })
 export class SwapModule {}

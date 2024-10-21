@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { AlertService } from '../alert/alert.service';
+import { AlertService } from './alert.service';
 
 @Injectable()
 export class PriceSchedulerService {
   constructor(private readonly alertService: AlertService) {}
 
-  @Cron('*/5 * * * *')
+  @Cron('0 * * * *')
   async handleCron() {
-    await this.alertService.checkPriceAlerts();
+    await this.alertService.triggerPriceAlert('ethereum');
+    await this.alertService.triggerPriceAlert('polygon');
   }
 }
