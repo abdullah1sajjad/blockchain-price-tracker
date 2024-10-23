@@ -52,7 +52,9 @@ export class PriceController {
     const ethPrice = await this.priceService.getPrice('ethereum');
     const polyPrice = await this.priceService.getPrice('polygon');
 
-    await this.alertService.checkPrice('ethereum', ethPrice);
-    await this.alertService.checkPrice('polygon', polyPrice);
+    if (ethPrice && polyPrice) {
+      await this.alertService.checkPrice('ethereum', ethPrice);
+      await this.alertService.checkPrice('polygon', polyPrice);
+    }
   }
 }

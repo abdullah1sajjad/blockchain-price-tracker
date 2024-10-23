@@ -2,6 +2,7 @@ import { Body, Controller, Post } from '@nestjs/common';
 import { ApiTags, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AlertService } from './alert.service';
 import { SetPriceAlertDto } from './dto/set-price-alert.dto';
+import { Cron } from '@nestjs/schedule';
 
 @ApiTags('Alerts') // Group this controller under the "Alerts" section in Swagger UI
 @Controller('alert')
@@ -35,5 +36,11 @@ export class AlertController {
   setPriceAlert(@Body() setPriceAlertDto: SetPriceAlertDto) {
     const { chain, targetPrice, email } = setPriceAlertDto;
     return this.alertService.setPriceAlert(chain, targetPrice, email);
+  }
+
+  @Cron('0 * * * *')
+  async handleCron() {
+    await this.alertService.triggerPriceAlert('ethereum');
+    await this.alertService.triggerPriceAlert('polygon');
   }
 }
